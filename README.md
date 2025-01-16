@@ -8,15 +8,9 @@ You need to set the following variables:
 
 The weights directory must contain the models from https://github.com/CSSLab/maia-chess
 
-Models with Lichess Bots
-Targeted Rating 	lichess name 	link
 1100 	maia1 	maia-1100.pb.gz
 1500 	maia5 	maia-1500.pb.gz
 1900 	maia9 	maia-1900.pb.gz
-
-The bots on Lichess use opening books that are still in development, since the models play the same move every time.
-Other Models
-Targeted Rating 	link
 1200 	maia-1200.pb.gz
 1300 	maia-1300.pb.gz
 1400 	maia-1400.pb.gz
