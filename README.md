@@ -3,8 +3,8 @@ wrapper for lc0 to play nice with chess engines using maia. Selects the various 
 
 You need to set the following variables:
 
-`LC0_BINARY  = "/opt/homebrew/bin/lc0"
-`WEIGHTS_DIR = "/Users/fraser/Documents/HIARCS Chess/EngineData"
+`LC0_BINARY  = "/opt/homebrew/bin/lc0"`
+`WEIGHTS_DIR = "/Users/fraser/Documents/HIARCS Chess/EngineData"`
 
 The weights directory must contain the models from https://github.com/CSSLab/maia-chess
 
