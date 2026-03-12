@@ -1,6 +1,6 @@
 # Maia Wrapper
 
-A UCI-compatible wrapper for the [Lc0](https://lczero.org/) chess engine that lets you play against [Maia](https://maiachess.com/) — a human-like chess engine trained on real online games. Select a strength level between **1100** and **1900 Elo** directly from your chess GUI, and the wrapper handles everything else.
+A UCI-compatible wrapper for the [Lc0](https://lczero.org/) chess engine that lets you play against [Maia](https://maiachess.com/) - a human-like chess engine trained on real online games. Select a strength level between **1100** and **1900 Elo** directly from your chess GUI, and the wrapper handles everything else.
 
 ## How It Works
 
