@@ -23,7 +23,7 @@ logging.info("Starting Maia wrapper that reads all lines (no lines missed).")
 # ENGINE CONFIGURATION
 ###############################################################################
 LC0_BINARY  = os.environ.get("LC0_BINARY", "/opt/homebrew/bin/lc0")
-WEIGHTS_DIR = os.environ.get("WEIGHTS_DIR", "/Users/fraser/Documents/HIARCS Chess/EngineData")
+WEIGHTS_DIR = os.environ.get("WEIGHTS_DIR", os.path.dirname(os.path.abspath(__file__)))
 
 ELO_TO_WEIGHTS = {
     1100: "maia-1100.pb.gz",

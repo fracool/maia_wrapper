@@ -57,7 +57,7 @@ Maia Wrapper sits between your chess GUI and Lc0, intercepting UCI commands to:
 | Variable      | Description                        | Default                                              |
 |---------------|------------------------------------|------------------------------------------------------|
 | `LC0_BINARY`  | Path to the Lc0 binary             | `/opt/homebrew/bin/lc0`                              |
-| `WEIGHTS_DIR` | Directory containing weight files  | `/Users/fraser/Documents/HIARCS Chess/EngineData`    |
+| `WEIGHTS_DIR` | Directory containing weight files  | Directory where `maia.py` is located                 |
 
 These can be set as environment variables or edited directly in `maia.py`.
 
