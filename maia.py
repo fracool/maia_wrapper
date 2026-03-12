@@ -22,8 +22,8 @@ logging.info("Starting Maia wrapper that reads all lines (no lines missed).")
 ###############################################################################
 # ENGINE CONFIGURATION
 ###############################################################################
-LC0_BINARY  = "/opt/homebrew/bin/lc0"
-WEIGHTS_DIR = "/Users/fraser/Documents/HIARCS Chess/EngineData"
+LC0_BINARY  = os.environ.get("LC0_BINARY", "/opt/homebrew/bin/lc0")
+WEIGHTS_DIR = os.environ.get("WEIGHTS_DIR", "/Users/fraser/Documents/HIARCS Chess/EngineData")
 
 ELO_TO_WEIGHTS = {
     1100: "maia-1100.pb.gz",
@@ -48,6 +48,9 @@ def launch_engine(weights_file: str) -> subprocess.Popen:
     """
     Launch Lc0 with unbuffered output so we read lines as soon as they're written.
     """
+    if not os.path.isfile(weights_file):
+        logging.error(f"Weights file not found: {weights_file}")
+        raise FileNotFoundError(f"Weights file not found: {weights_file}")
     logging.info(f"Launching Lc0 with weights={weights_file}")
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"  # Force unbuffered output
@@ -65,8 +68,13 @@ def launch_engine(weights_file: str) -> subprocess.Popen:
 def kill_engine(proc: subprocess.Popen):
     """Kill the engine process if it's still running."""
     if proc.poll() is None:
-        logging.info("Killing current Lc0 process.")
-        proc.kill()
+        logging.info("Terminating current Lc0 process.")
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            logging.warning("Engine did not terminate gracefully, killing.")
+            proc.kill()
 
 def engine_write(proc: subprocess.Popen, cmd: str):
     """Send a line to Lc0 (if it's alive)."""
@@ -81,16 +89,28 @@ def wrapper_print(msg: str):
     """Output one line to the GUI (stdout)."""
     logging.debug(f"[TO GUI] {msg}")
     print(msg, flush=True)
+
+###############################################################################
+# GLOBAL STATE
+###############################################################################
 new_weights = None
+quitting = threading.Event()          # Thread-safe quit flag
+changing_weights = threading.Event()  # Thread-safe flag to change weights
+
 def change_weights(elo: int, engine):
-    """Change the weights of the engine."""
+    """Change the weights of the engine to match the requested ELO."""
     global new_weights
+    closest_elo = get_closest_elo(elo, list(ELO_TO_WEIGHTS.keys()))
+    if closest_elo != elo:
+        logging.info(f"Requested ELO {elo} not available, using closest: {closest_elo}")
+    weights_file = f"{WEIGHTS_DIR}/{ELO_TO_WEIGHTS[closest_elo]}"
+    if not os.path.isfile(weights_file):
+        logging.error(f"Weights file not found: {weights_file}")
+        return
     changing_weights.set()  # Signal to stop main loop
     kill_engine(engine)
-    new_weights = f"{WEIGHTS_DIR}/{ELO_TO_WEIGHTS[elo]}"
-    
-quitting = threading.Event()  # Thread-safe quit flag
-changing_weights = threading.Event()  # Thread-safe flag to change weights
+    new_weights = weights_file
+
 def customise_command(cmd, engine):
     """Customize command before sending to engine."""
     global collecting_uci_response
@@ -103,9 +123,13 @@ def customise_command(cmd, engine):
         return cmd
 
     elif cmd.startswith("setoption name UCI_Elo value"):
-        elo_value = int(cmd.split()[-1])
+        try:
+            elo_value = int(cmd.split()[-1])
+        except (ValueError, IndexError):
+            logging.warning(f"Invalid ELO value in command: {cmd}")
+            return ""
         change_weights(elo_value, engine)
-        return 
+        return ""
 
     elif cmd.startswith("go"):
         # Customise 'go' command
@@ -117,10 +141,6 @@ def customise_command(cmd, engine):
 # HANDSHAKE CONTROL
 ###############################################################################
 collecting_uci_response = False
-custom_option_prefixes = [
-    "option name UCI_Elo ",
-    "option name UCI_LimitStrength ",
-]
 
 logging.info("Entering main event loop.")
 
@@ -158,23 +178,17 @@ def initialise_threads(engine):
 UCI_ELO = 1100
 init_weights = f"{WEIGHTS_DIR}/{ELO_TO_WEIGHTS[UCI_ELO]}"
 
-def start_engine(weights):
-    engine = launch_engine(weights)
-    return engine
-
-# Start threads to handle engine output and input
-#initialise_threads(engine)
-
 ###############################################################################
 # MAIN LOOP
 ###############################################################################
 
 def main(weights=init_weights):
-    engine = start_engine(weights)
+    global new_weights
+    engine = launch_engine(weights)
     initialise_threads(engine)
     global collecting_uci_response
     if weights != init_weights:
-        wrapper_print(f"uciok")
+        wrapper_print("uciok")
 
     while not quitting.is_set() and not changing_weights.is_set():
         try:
@@ -183,9 +197,9 @@ def main(weights=init_weights):
 
             if collecting_uci_response:
                 if line_out.startswith("id name"):
-                    wrapper_print(f"id name Maia")
+                    wrapper_print("id name Maia")
                 elif line_out.startswith("id author"):
-                    wrapper_print(f"id author Maia Team")
+                    wrapper_print("id author Maia Team")
                 elif line_out.startswith("option name"):
                     if "UCI_Elo" in line_out or "UCI_LimitStrength" in line_out:
                         continue
@@ -208,10 +222,12 @@ def main(weights=init_weights):
 if __name__ == "__main__":
     main()
 
-if quitting.is_set():
-    logging.info("Quitting Maia wrapper.")
+    while changing_weights.is_set():
+        logging.info("Changing weights.")
+        changing_weights.clear()
+        main(new_weights)
+
+    if quitting.is_set():
+        logging.info("Quitting Maia wrapper.")
+
     sys.exit(0)
-elif changing_weights.is_set():
-    logging.info("Changing weights.")
-    changing_weights.clear()
-    main(new_weights)
